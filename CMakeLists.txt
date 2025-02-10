@@ -17,12 +17,21 @@ CPMAddPackage(
         GITHUB_REPOSITORY juce-framework/JUCE
         GIT_TAG 8.0.6  # Or your desired JUCE version
 )
+
+
+juce_add_binary_data(BinaryData
+        SOURCES
+        Resources/IBMPlexMono-Regular.ttf
+        NAMESPACE BinaryData
+)
+
 set (MacPList "<plist version=\"1.0\">
 <dict>
     <key>LSUIElement</key>
     <true/>
 </dict>
 </plist>")
+
 
 
 juce_add_gui_app(${PROJECT_NAME}
@@ -40,6 +49,8 @@ target_sources(${PROJECT_NAME}
         Source/Main.cpp
         Source/SystemAudioDeviceSwitcher.cpp
         Source/MainContentComponent.cpp
+        Source/AudioHandler.cpp
+        Source/AudioRecorder.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -51,6 +62,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        BinaryData
         juce::juce_gui_basics
         juce::juce_gui_extra
         juce::juce_audio_basics

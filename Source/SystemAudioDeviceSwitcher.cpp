@@ -1,47 +1,37 @@
-//
-// Created by Charlie Culbert on 2/9/25.
-//
-
 #include "SystemAudioDeviceSwitcher.h"
-// AudioDeviceSwitcher.cpp
+#include <cstring>
 
-bool SystemAudioDeviceSwitcher::switchToBlackHole() {
-    if (!usingBlackHole) {
-        // Store current output if we haven't already
-        if (!originalDevice) {
-            AudioDeviceID currentDevice;
-            UInt32 size = sizeof(AudioDeviceID);
-            AudioObjectPropertyAddress addr = {
-                kAudioHardwarePropertyDefaultOutputDevice,
-                kAudioObjectPropertyScopeGlobal,
-                kAudioObjectPropertyElementMaster
-            };
-            AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, &currentDevice);
-            originalDevice = currentDevice;
-        }
-
-        // Switch to BlackHole
-        if (AudioDeviceID blackHole = findDevice("BlackHole 2ch")) {
-            if (setOutputDevice(blackHole)) {
-                usingBlackHole = true;
-                return true;
-            }
-        }
+AudioDeviceID SystemAudioDeviceSwitcher::getCurrentOutputDevice() {
+    AudioDeviceID currentDevice;
+    UInt32 size = sizeof(AudioDeviceID);
+    AudioObjectPropertyAddress addr = {
+        kAudioHardwarePropertyDefaultOutputDevice,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster
+    };
+    
+    if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, &currentDevice) == noErr) {
+        return currentDevice;
     }
-    return false;
+    return 0;
 }
 
-bool SystemAudioDeviceSwitcher::restoreOriginalOutput() {
-    if (usingBlackHole && originalDevice) {
-        if (setOutputDevice(originalDevice)) {
-            usingBlackHole = false;
-            return true;
-        }
-    }
-    return false;
+bool SystemAudioDeviceSwitcher::getDeviceName(AudioDeviceID deviceId, char* outName, UInt32 maxLength) {
+    if (!deviceId || !outName || maxLength == 0) return false;
+    
+    AudioObjectPropertyAddress addr = {
+        kAudioDevicePropertyDeviceName,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster
+    };
+
+    UInt32 size = maxLength;
+    return AudioObjectGetPropertyData(deviceId, &addr, 0, nullptr, &size, outName) == noErr;
 }
 
-AudioDeviceID SystemAudioDeviceSwitcher::findDevice(const char* name) {
+AudioDeviceID SystemAudioDeviceSwitcher::findDeviceByName(const char* name) {
+    if (!name) return 0;
+
     AudioObjectPropertyAddress addr = {
         kAudioHardwarePropertyDevices,
         kAudioObjectPropertyScopeGlobal,
@@ -49,52 +39,62 @@ AudioDeviceID SystemAudioDeviceSwitcher::findDevice(const char* name) {
     };
 
     UInt32 size = 0;
-    AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, nullptr, &size);
-    int deviceCount = size / sizeof(AudioDeviceID);
+    if (AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, nullptr, &size) != noErr) {
+        return 0;
+    }
 
-    AudioDeviceID* devices = new AudioDeviceID[deviceCount];
-    AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, devices);
+    int deviceCount = size / sizeof(AudioDeviceID);
+    if (deviceCount == 0) return 0;
+
+    std::vector<AudioDeviceID> devices(deviceCount);
+    if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, devices.data()) != noErr) {
+        return 0;
+    }
 
     AudioDeviceID result = 0;
-    for (int i = 0; i < deviceCount; ++i) {
+    for (const auto& device : devices) {
         char deviceName[64];
-        size = sizeof(deviceName);
-        addr.mSelector = kAudioDevicePropertyDeviceName;
-        AudioObjectGetPropertyData(devices[i], &addr, 0, nullptr, &size, deviceName);
-        if (strcmp(deviceName, name) == 0) {
-            result = devices[i];
+        if (getDeviceName(device, deviceName, sizeof(deviceName)) && strcmp(deviceName, name) == 0) {
+            result = device;
             break;
         }
     }
 
-    delete[] devices;
     return result;
 }
 
+std::vector<AudioDeviceID> SystemAudioDeviceSwitcher::getAllDevices() {
+    AudioObjectPropertyAddress addr = {
+        kAudioHardwarePropertyDevices,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster
+    };
+
+    UInt32 size = 0;
+    if (AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, nullptr, &size) != noErr) {
+        return {};
+    }
+
+    int deviceCount = size / sizeof(AudioDeviceID);
+    if (deviceCount == 0) return {};
+
+    std::vector<AudioDeviceID> devices(deviceCount);
+    if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, devices.data()) != noErr) {
+        return {};
+    }
+
+    return devices;
+}
+
 bool SystemAudioDeviceSwitcher::setOutputDevice(AudioDeviceID deviceID) {
+    if (!deviceID) return false;
+
     AudioObjectPropertyAddress addr = {
         kAudioHardwarePropertyDefaultOutputDevice,
         kAudioObjectPropertyScopeGlobal,
         kAudioObjectPropertyElementMaster
     };
+    
     return AudioObjectSetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr,
                                     sizeof(AudioDeviceID), &deviceID) == noErr;
-}
-
-
-const char* SystemAudioDeviceSwitcher::getOriginalDeviceName()
-{
-    if (originalDevice)
-    {
-        static char deviceName[64];
-        UInt32 size = sizeof(deviceName);
-        AudioObjectPropertyAddress addr = {
-            kAudioDevicePropertyDeviceName,
-            kAudioObjectPropertyScopeGlobal,
-            kAudioObjectPropertyElementMaster
-        };
-        AudioObjectGetPropertyData(originalDevice, &addr, 0, nullptr, &size, deviceName);
-        return deviceName;
-    }
-    return nullptr;
 }

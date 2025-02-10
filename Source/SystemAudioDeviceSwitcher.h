@@ -1,22 +1,22 @@
-//
-// Created by Charlie Culbert on 2/9/25.
-//
-
-// SystemAudioDeviceSwitcher.h
 #pragma once
+
 #include <CoreAudio/CoreAudio.h>
+#include <vector>
 
 class SystemAudioDeviceSwitcher {
 public:
-    static bool switchToBlackHole();
-    static bool restoreOriginalOutput();
-    static bool isUsingBlackHole() { return usingBlackHole; }
-    static const char* getOriginalDeviceName();  // Changed to static
+    // Get current default output device
+    static AudioDeviceID getCurrentOutputDevice();
 
-private:
-    static AudioDeviceID findDevice(const char* name);
+    // Get device name from ID
+    static bool getDeviceName(AudioDeviceID deviceId, char* outName, UInt32 maxLength);
+
+    // Find device by name
+    static AudioDeviceID findDeviceByName(const char* name);
+
+    // Get all available audio devices
+    static std::vector<AudioDeviceID> getAllDevices();
+
+    // Set output device
     static bool setOutputDevice(AudioDeviceID deviceID);
-
-    inline static AudioDeviceID originalDevice = 0;
-    inline static bool usingBlackHole = false;
 };

@@ -1,93 +1,124 @@
-// MainContentComponent.cpp
 #include "MainContentComponent.h"
+
+#include "../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/ImageIO.framework/Headers/CGImageAnimation.h"
+
 
 MainContentComponent::MainContentComponent()
 {
-    // Initialize device switch button
+    // Loopback device selector dropdown
+    addAndMakeVisible(loopbackDeviceSelector);
+    loopbackDeviceSelector.onChange = [this]() {
+        auto selectedDevice = loopbackDeviceSelector.getText().trim();
+
+        if (selectedDevice.isEmpty()) {
+            DBG("Error: No loopback device selected!");
+            return;
+        }
+
+        DBG("Selected Loopback Device: " + selectedDevice);
+        AudioHandler::getInstance().setLoopbackDevice(selectedDevice);
+    };
+
+
+    populateLoopbackDevices();
+
+    // Initialize switch button
     addAndMakeVisible(switchButton);
-    switchButton.setButtonText("Switch to BlackHole");
-    switchButton.addListener(this);
+    switchButton.setButtonText("Switch to Loopback");
+    switchButton.onClick = []() {
+        AudioHandler::getInstance().switchToLoopbackDevice();
+    };
 
-    // Initialize record button
-    addAndMakeVisible(recordButton);
-    recordButton.setButtonText("Start Recording");
-    recordButton.addListener(this);
-    recordButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
+    addAndMakeVisible(startButton);
+    startButton.setButtonText("Start Recording");
+    startButton.onClick = []() {
+        AudioHandler::getInstance().startRecording(juce::File::getSpecialLocation(juce::File::userDesktopDirectory)
+                            .getChildFile("my_recording.wav"));
+    };
 
-    // Initialize recording time label
-    addAndMakeVisible(recordingTimeLabel);
-    recordingTimeLabel.setText("00:00:00", juce::dontSendNotification);
-    recordingTimeLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(stopButton);
+    stopButton.setButtonText("Stop Recording");
+    stopButton.onClick = []() {
+        AudioHandler::getInstance().stopRecording();
+    };
 
-    // Initialize audio recorder
-    audioRecorder = std::make_unique<AudioRecorder>();
+
+    // Initialize switch back button
+    addAndMakeVisible(switchBackButton);
+    switchBackButton.setButtonText("Switch Back");
+    switchBackButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
+    switchBackButton.onClick = []() {
+        AudioHandler::getInstance().restoreOriginalOutputDevice();
+    };
+
+
 }
 
-MainContentComponent::~MainContentComponent()
+MainContentComponent::~MainContentComponent() = default;
+
+void MainContentComponent::populateLoopbackDevices()
 {
-    switchButton.removeListener(this);
-    recordButton.removeListener(this);
+    loopbackDeviceSelector.clear();
+    auto devices = SystemAudioDeviceSwitcher::getAllDevices();
+
+    int index = 1;
+    for (const auto& deviceID : devices)
+    {
+        char deviceName[64] = {0};
+        if (SystemAudioDeviceSwitcher::getDeviceName(deviceID, deviceName, sizeof(deviceName)))
+        {
+            // Hard-coded: only allow "BlackHole 2ch"
+            if (juce::String(deviceName).compareIgnoreCase("BlackHole 2ch") == 0)
+            {
+                loopbackDeviceSelector.addItem(juce::String(deviceName), index++);
+            }
+        }
+    }
+
+    if (loopbackDeviceSelector.getNumItems() > 0)
+    {
+        loopbackDeviceSelector.setSelectedId(1);
+    }
+    else
+    {
+        // Define a callback class that quits the application when the modal is dismissed.
+        struct QuitCallback : public juce::ModalComponentManager::Callback
+        {
+            void modalStateFinished (int /*result*/) override
+            {
+                juce::JUCEApplication::quit();
+            }
+        };
+        static QuitCallback quitCallback;
+
+        // Use the asynchronous alert to avoid leaks.
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                               "BlackHole 2ch Not Found",
+                                               "Application is hardcoded to only support Blackhole 2ch. Rebuild if other loopback device is needed.",
+                                               "OK",
+
+                                               nullptr,
+                                               &quitCallback);
+    }
 }
+
+
 
 void MainContentComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::black.withAlpha(0.8f));
+    g.fillAll(juce::Colours::black.withAlpha(0.85f));
 }
 
 void MainContentComponent::resized()
 {
     auto area = getLocalBounds();
-    auto buttonHeight = 50;
-    auto spacing = 10;
+    auto buttonHeight = 40;
+    auto spacing = 5;
 
-    // Layout components vertically
-    auto topArea = area.removeFromTop(buttonHeight + spacing);
-    switchButton.setBounds(topArea.withSizeKeepingCentre(200, buttonHeight));
+    loopbackDeviceSelector.setBounds(area.removeFromTop(buttonHeight + spacing).withSizeKeepingCentre(200, buttonHeight));
+    switchButton.setBounds(area.removeFromTop(buttonHeight + spacing).withSizeKeepingCentre(200, buttonHeight));
+    switchBackButton.setBounds(area.removeFromTop(buttonHeight + spacing).withSizeKeepingCentre(200, buttonHeight));
+    startButton.setBounds(area.removeFromTop(buttonHeight + spacing).withSizeKeepingCentre(200, buttonHeight));
+    stopButton.setBounds(area.removeFromTop(buttonHeight + spacing).withSizeKeepingCentre(200, buttonHeight));
 
-    auto middleArea = area.removeFromTop(buttonHeight + spacing);
-    recordButton.setBounds(middleArea.withSizeKeepingCentre(200, buttonHeight));
-
-    recordingTimeLabel.setBounds(area.removeFromTop(30).withSizeKeepingCentre(200, 25));
 }
-
-void MainContentComponent::buttonClicked(juce::Button* button)
-{
-    if (button == &switchButton)
-    {
-        if (!SystemAudioDeviceSwitcher::isUsingBlackHole())
-        {
-            juce::Logger::writeToLog("\nAttempting to switch to BlackHole...");
-            if (SystemAudioDeviceSwitcher::switchToBlackHole())
-            {
-                switchButton.setButtonText("Restore Original");
-
-                // When we switch to BlackHole, start monitoring
-                if (auto originalDeviceName = SystemAudioDeviceSwitcher::getOriginalDeviceName())
-                {
-                    audioRecorder->start("BlackHole 2ch", originalDeviceName);
-                }
-            }
-        }
-        else
-        {
-            juce::Logger::writeToLog("\nAttempting to restore original output...");
-            if (SystemAudioDeviceSwitcher::restoreOriginalOutput())
-            {
-                switchButton.setButtonText("Switch to BlackHole");
-                audioRecorder->stop();
-            }
-        }
-    }
-    else if (button == &recordButton)
-    {
-        // We'll add recording functionality back later
-        juce::Logger::writeToLog("Record button clicked (disabled for now)");
-    }
-}
-
-void MainContentComponent::resetSwitchButton()
-{
-    switchButton.setButtonText("Switch to BlackHole");
-}
-
-
