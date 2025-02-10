@@ -51,6 +51,7 @@ target_sources(${PROJECT_NAME}
         Source/MainContentComponent.cpp
         Source/AudioHandler.cpp
         Source/AudioRecorder.cpp
+        Source/SystemTray.mm
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -77,7 +78,10 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 if(APPLE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreAudio")
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+            "-framework CoreAudio"
+            "-framework Cocoa"
+    )
 endif()
 
 target_compile_definitions(${PROJECT_NAME}

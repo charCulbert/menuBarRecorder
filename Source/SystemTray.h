@@ -1,26 +1,12 @@
-// SystemTray.h
 #pragma once
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_gui_extra/juce_gui_extra.h>
 
 class TrayIcon : public juce::SystemTrayIconComponent
 {
 public:
-    explicit TrayIcon(std::function<void()> onClick) : onClickCallback(onClick)
-    {
-        // Create icon image
-        juce::Image icon(juce::Image::ARGB, 32, 32, true);
-        juce::Graphics g(icon);
-        g.fillAll(juce::Colours::black);
-        setIconImage(icon, icon);
-    }
-
-    void mouseDown(const juce::MouseEvent& event) override
-    {
-        if (event.mods.isLeftButtonDown() && onClickCallback)
-        {
-            onClickCallback();
-        }
-    }
+    explicit TrayIcon(std::function<void()> onClick);
+    void mouseDown(const juce::MouseEvent& event) override;
+    juce::Point<int> getTrayIconPosition() const;
 
 private:
     std::function<void()> onClickCallback;
