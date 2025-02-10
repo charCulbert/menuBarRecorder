@@ -1,0 +1,86 @@
+# CMake build directories
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# JUCE build artifacts
+JuceLibraryCode/
+*.jucer
+*.xcworkspace
+xcuserdata/
+*.xcodeproj/
+*.xcconfig
+*.pbxproj
+*.xcscheme
+
+# CLion-specific
+.idea/
+
+# Visual Studio-specific
+*.sdf
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.VC.db
+*.opendb
+*.suo
+*.user
+*.opensdf
+*.sdf
+*.opensuo
+Debug/
+Release/
+x64/
+ipch/
+
+# Xcode-specific
+*.DS_Store
+DerivedData/
+*.app/
+*.dSYM/
+
+# Compiled Object files
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Log files
+*.log
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+
+# Editor temp files
+*~
+*.bak
+*.swp
+*.swo
+
+# macOS specific
+.DS_Store
+
+# Windows specific
+Thumbs.db
+
+# JUCE generated binaries (adjust paths as needed)
+Builds/
+out/
