@@ -26,7 +26,7 @@ public:
     // Button Fonts
     juce::Font getTextButtonFont(juce::TextButton &, int) override { return defaultFont; }
     juce::Font getComboBoxFont(juce::ComboBox &) override { return defaultFont; }
-    juce::Font getLabelFont(juce::Label &) override { return defaultFont; }
+    // juce::Font getLabelFont(juce::Label &) override { return defaultFont; }
     juce::Font getSliderPopupFont(juce::Slider &) override { return defaultFont; }
     juce::Font getPopupMenuFont() override { return defaultFont; }
 

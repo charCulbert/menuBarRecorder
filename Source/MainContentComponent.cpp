@@ -1,9 +1,13 @@
 #include "MainContentComponent.h"
 
+
 MainContentComponent::MainContentComponent()
 {
-    // Loopback device selector
+    setWantsKeyboardFocus(true);
+
+    // Loopback device selector (Initially hidden)
     addAndMakeVisible(loopbackDeviceSelector);
+    loopbackDeviceSelector.setVisible(false);
     loopbackDeviceSelector.onChange = [this]() {
         auto selectedDevice = loopbackDeviceSelector.getText().trim();
         if (!selectedDevice.isEmpty()) {
@@ -11,9 +15,8 @@ MainContentComponent::MainContentComponent()
         }
     };
 
-    // Record button
+    // Custom record button
     addAndMakeVisible(recordButton);
-    recordButton.setButtonText("Start Recording");
     recordButton.onClick = [this]() {
         if (!isRecording) {
             startRecording();
@@ -21,15 +24,27 @@ MainContentComponent::MainContentComponent()
             stopRecording();
         }
     };
+    recordButton.setClickingTogglesState(true);
 
-    // Recording duration label
+    // Duration label
     addAndMakeVisible(durationLabel);
+    durationLabel.setFont(juce::Font(18.0f, juce::Font::plain));
     durationLabel.setJustificationType(juce::Justification::centred);
-    durationLabel.setFont(juce::Font(juce::Font::getDefaultSansSerifFontName(), 16.0f, juce::Font::plain));
+
+    // Filename text editor
+    addAndMakeVisible(fileNameEditor);
+    fileNameEditor.setText("recording_{timestamp}", false);
+    fileNameEditor.setJustification(juce::Justification::centred);
+    fileNameEditor.setFont(juce::Font(12.0f, juce::Font::plain));
+    fileNameEditor.setBorder(juce::BorderSize<int>(0)); // Remove border
+    fileNameEditor.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    fileNameEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colours::black.withAlpha(0.85f));
+    fileNameEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
 
     populateLoopbackDevices();
-    setSize(300, 150);
+    setSize(300, 200);
 }
+
 
 MainContentComponent::~MainContentComponent()
 {
@@ -38,28 +53,51 @@ MainContentComponent::~MainContentComponent()
 
 void MainContentComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::black.withAlpha(0.85f));
 
-    if (isRecording) {
-        // Draw recording indicator
-        auto bounds = getLocalBounds().removeFromTop(30);
-        g.setColour(juce::Colours::red);
-        g.fillEllipse(bounds.getCentreX() - 5, bounds.getCentreY() - 5, 10, 10);
-    }
+    auto bounds = getLocalBounds().toFloat();
+    float cornerSize = 8.0f; // Adjust for macOS-like softness
+
+    g.setColour(juce::Colours::black.withAlpha(0.85f));
+
+    juce::Path roundedRect;
+    roundedRect.addRoundedRectangle(bounds, cornerSize);
+
+    g.reduceClipRegion(roundedRect);
+    g.fillPath(roundedRect);
+
+
+    g.fillAll(juce::Colours::black.withAlpha(0.85f));
 }
 
 void MainContentComponent::resized()
 {
-    auto area = getLocalBounds().reduced(5);
-    auto buttonHeight = 30;
-    auto spacing = 5;
-    loopbackDeviceSelector.setBounds(area.removeFromTop(buttonHeight));
-    area.removeFromTop(spacing);
-    recordButton.setBounds(area.removeFromTop(buttonHeight));
-    area.removeFromTop(spacing);
-    durationLabel.setBounds(area.removeFromTop(buttonHeight));
+    auto bounds = getLocalBounds().reduced(5); // Add padding around the layout
 
+    juce::FlexBox flexBox;
+    flexBox.flexDirection = juce::FlexBox::Direction::column; // Arrange items vertically
+    flexBox.justifyContent = juce::FlexBox::JustifyContent::center; // Center items
+    flexBox.alignItems = juce::FlexBox::AlignItems::center; // Align items to center
+
+    // Loopback Selector (Shown only when Alt is held)
+    if (isLoopbackVisible)
+    {
+        flexBox.items.add(juce::FlexItem(loopbackDeviceSelector).withWidth(200.0f).withHeight(30.0f));
+    }
+
+    // Duration Label
+    flexBox.items.add(juce::FlexItem(durationLabel).withWidth(200.0f).withHeight(30.0f).withMargin(juce::FlexItem::Margin(5.0f)));
+
+    // Record Button
+    flexBox.items.add(juce::FlexItem(recordButton).withWidth(50.0f).withHeight(50.0f).withMargin(juce::FlexItem::Margin(5.0f)));
+
+    // Filename Text Field
+    flexBox.items.add(juce::FlexItem(fileNameEditor).withWidth(200.0f).withHeight(30.0f).withMargin(juce::FlexItem::Margin(5.0f)));
+
+    // Apply layout
+    flexBox.performLayout(bounds);
 }
+
+
 
 void MainContentComponent::timerCallback()
 {
@@ -126,20 +164,27 @@ void MainContentComponent::populateLoopbackDevices()
 
 void MainContentComponent::startRecording()
 {
-    auto timestamp = juce::Time::getCurrentTime()
-                      .formatted("%Y-%m-%d_%H-%M-%S");
+    auto userFileName = fileNameEditor.getText().trim();
+    if (userFileName.isEmpty())
+        userFileName = "recording_{timestamp}";
+
+    auto timestamp = juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M-%S");
+    userFileName = userFileName.replace("{timestamp}", timestamp);
+
     auto file = juce::File::getSpecialLocation(juce::File::userDesktopDirectory)
-                 .getChildFile("recording_" + timestamp + ".wav");
+                 .getChildFile(userFileName + ".wav");
 
     AudioHandler::getInstance().switchToLoopbackDevice();
     AudioHandler::getInstance().startRecording(file);
 
     isRecording = true;
     recordingStartTime = juce::Time::getMillisecondCounter();
-    recordButton.setButtonText("Stop Recording");
-    startTimer(16); // Update at 60hz
+    recordButton.setToggleState(true, juce::dontSendNotification);
+    startTimer(16);
     recordedFile = file;
+    this->setAlwaysOnTop(true);
 }
+
 
 void MainContentComponent::stopRecording()
 {
@@ -147,10 +192,35 @@ void MainContentComponent::stopRecording()
     AudioHandler::getInstance().restoreOriginalOutputDevice();
 
     isRecording = false;
-    recordButton.setButtonText("Start Recording");
+    recordButton.setToggleState(false, juce::dontSendNotification); // Change to record icon
     stopTimer();
-    durationLabel.setText("00:00:00", juce::dontSendNotification);
+    durationLabel.setText("00:00:00:000", juce::dontSendNotification);
     recordedFile.revealToUser();
+    this->setAlwaysOnTop(false);
+    juce::Component::unfocusAllComponents();
     this->setVisible(false);
-    repaint();
+}
+
+
+
+void MainContentComponent::focusLost(FocusChangeType)
+{
+    if (!isParentOf(juce::Component::getCurrentlyFocusedComponent()))
+    {
+        if (!isRecording) {
+            setVisible(false); // Hide only if focus moves outside this component
+        }
+    }
+}
+
+void MainContentComponent::mouseDown(const juce::MouseEvent& event)
+{
+    if (event.mods.isRightButtonDown())
+    {
+        isLoopbackVisible = !isLoopbackVisible; // Toggle visibility
+        loopbackDeviceSelector.setVisible(isLoopbackVisible);
+        resized(); // Ensure layout updates
+        repaint(); // Redraw component
+    }
+
 }
