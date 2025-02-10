@@ -7,12 +7,25 @@
 TrayIcon::TrayIcon(std::function<void()> onClick)
     : onClickCallback(onClick)
 {
-    // Create icon image
     juce::Image icon(juce::Image::ARGB, 32, 32, true);
     juce::Graphics g(icon);
-    g.fillAll(juce::Colours::black);
+
+    // Fill background with transparency
+    g.fillAll(juce::Colours::transparentBlack);
+
+    // Draw a solid white dot in the center
+    const int centerX = icon.getWidth() / 2;
+    const int centerY = icon.getHeight() / 2;
+    const int radius = 6;
+
+    g.setColour(juce::Colours::white);
+    g.fillEllipse(centerX - radius, centerY - radius, radius * 2, radius * 2);
+
     setIconImage(icon, icon);
 }
+
+
+
 
 void TrayIcon::mouseDown(const juce::MouseEvent& event)
 {
