@@ -35,11 +35,14 @@ set (MacPList "<plist version=\"1.0\">
 
 
 juce_add_gui_app(${PROJECT_NAME}
-        COMPANY_NAME "YourCompanyName"  # *** CHANGE THIS ***
+        COMPANY_NAME "CharlieCulbert"  # *** CHANGE THIS ***
         PRODUCT_NAME "MenuBarRecorder"
+        MICROPHONE_PERMISSION_ENABLED TRUE
+        MICROPHONE_PERMISSION_TEXT "Amazing Audio App needs access to your audio interface"
+        HARDENED_RUNTIME_ENABLED TRUE
+        HARDENED_RUNTIME_OPTIONS com.apple.security.device.audio-input
         PLIST_TO_MERGE "${MacPList}"
-        BUNDLE_ID "com.yourcompany.MenuBarRecorder"  # *** CHANGE THIS (UNIQUE ID) ***
-        MACOSX_CODE_SIGN_ENTITLEMENTS ${CMAKE_CURRENT_SOURCE_DIR}/MenuBarRecorder.entitlements
+        BUNDLE_ID "com.charlieculbert.MenuBarRecorder"  # *** CHANGE THIS (UNIQUE ID) ***
         VERSION 0.1.0
 )
 
