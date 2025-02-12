@@ -5,12 +5,14 @@ MainContentComponent::MainContentComponent()
 {
     setWantsKeyboardFocus(true);
 
-    // Close button
     addAndMakeVisible(closeButton);
+    closeButton.setButtonText("X");
+    closeButton.setHasFocusOutline(false);
     closeButton.onClick = [this]() {
         stopRecording();
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
     };
+
 
 
 

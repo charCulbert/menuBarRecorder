@@ -23,9 +23,20 @@ public:
         defaultFont = juce::Font(typeface).withHeight(20.0f);
     }
 
+    void drawButtonBackground(juce::Graphics& g, juce::Button& button,
+                              const juce::Colour& backgroundColour,
+                              bool isMouseOverButton, bool isButtonDown) override {
+        auto bounds = button.getLocalBounds().toFloat();
+        g.setColour(backgroundColour);
+        g.fillRoundedRectangle(bounds, 0.0f); // No border, no corner radius
+    }
+
+
     // Button Fonts
-    juce::Font getTextButtonFont(juce::TextButton &, int) override { return defaultFont; }
-    juce::Font getComboBoxFont(juce::ComboBox &) override { return defaultFont; }
+    juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override
+    {
+        return juce::Font(12.0f, juce::Font::plain);
+    }    juce::Font getComboBoxFont(juce::ComboBox &) override { return defaultFont; }
     // juce::Font getLabelFont(juce::Label &) override { return defaultFont; }
     juce::Font getSliderPopupFont(juce::Slider &) override { return defaultFont; }
     juce::Font getPopupMenuFont() override { return defaultFont; }
