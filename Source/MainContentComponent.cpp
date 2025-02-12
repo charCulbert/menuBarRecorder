@@ -128,11 +128,9 @@ void MainContentComponent::populateLoopbackDevices()
     for (const auto& deviceID : devices)
     {
         char deviceName[64] = {0};
-        if (SystemAudioDeviceSwitcher::getDeviceName(deviceID, deviceName, sizeof(deviceName)))
-        {
-            // Hard-coded: only allow "BlackHole 2ch"
-            if (juce::String(deviceName).compareIgnoreCase("BlackHole 2ch") == 0)
-            {
+        if (SystemAudioDeviceSwitcher::getDeviceName(deviceID, deviceName, sizeof(deviceName))) {
+            // Hard-coded: only allow "BlackHole 2ch or MenuBarRecorder"
+            if (juce::String(deviceName).compareIgnoreCase("MenuBarRecorder 2ch") == 0 || juce::String(deviceName).compareIgnoreCase("BlackHole 2ch") == 0)            {
                 loopbackDeviceSelector.addItem(juce::String(deviceName), index++);
             }
         }
@@ -154,8 +152,8 @@ void MainContentComponent::populateLoopbackDevices()
         static QuitCallback quitCallback;
 
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                             "BlackHole 2ch Not Found",
-                                             "Application is hardcoded to only support Blackhole 2ch. Rebuild if other loopback device is needed.",
+                                             "No supported loopback audio device was found.",
+                                             "Application is hardcoded to only support MenuBarRecorder 2ch or Blackhole 2ch. Rebuild if other loopback device is needed.",
                                              "OK",
                                              nullptr,
                                              &quitCallback);
