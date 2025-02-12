@@ -17,8 +17,7 @@ public:
     void timerCallback() override;
     void populateLoopbackDevices();
     void focusLost(FocusChangeType) override;
-    void mouseDown(const juce::MouseEvent& event) override;
-
+    void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
 
 private:
     void startRecording();
@@ -28,6 +27,7 @@ private:
 
     juce::ComboBox loopbackDeviceSelector;
     RecordButton recordButton;
+    juce::TextButton closeButton { "X" };
     juce::Label durationLabel;
     juce::TextEditor fileNameEditor;  // New text field for filename
 

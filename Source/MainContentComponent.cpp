@@ -5,6 +5,15 @@ MainContentComponent::MainContentComponent()
 {
     setWantsKeyboardFocus(true);
 
+    // Close button
+    addAndMakeVisible(closeButton);
+    closeButton.onClick = [this]() {
+        stopRecording();
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    };
+
+
+
     // Loopback device selector (Initially hidden)
     addAndMakeVisible(loopbackDeviceSelector);
     loopbackDeviceSelector.setVisible(false);
@@ -71,7 +80,15 @@ void MainContentComponent::paint(juce::Graphics& g)
 
 void MainContentComponent::resized()
 {
-    auto bounds = getLocalBounds().reduced(5); // Add padding around the layout
+
+
+    auto bounds = getLocalBounds();
+    const int margin = 5;
+    const int closeButtonSize = 30;  // Adjust size as needed
+
+    // Place the close button in the top right corner.
+    closeButton.setBounds(bounds.getWidth() - closeButtonSize - margin, margin,
+                            closeButtonSize, closeButtonSize);
 
     juce::FlexBox flexBox;
     flexBox.flexDirection = juce::FlexBox::Direction::column; // Arrange items vertically
@@ -95,6 +112,9 @@ void MainContentComponent::resized()
 
     // Apply layout
     flexBox.performLayout(bounds);
+
+    closeButton.toFront (true);
+
 }
 
 
@@ -130,8 +150,11 @@ void MainContentComponent::populateLoopbackDevices()
         char deviceName[64] = {0};
         if (SystemAudioDeviceSwitcher::getDeviceName(deviceID, deviceName, sizeof(deviceName))) {
             // Hard-coded: only allow "BlackHole 2ch or MenuBarRecorder"
-            if (juce::String(deviceName).compareIgnoreCase("MenuBarRecorder 2ch") == 0 || juce::String(deviceName).compareIgnoreCase("BlackHole 2ch") == 0)            {
-                loopbackDeviceSelector.addItem(juce::String(deviceName), index++);
+            auto deviceString = juce::String(juce::CharPointer_UTF8(deviceName));
+            if (deviceString.compareIgnoreCase("MenuBarRecorder 2ch") == 0 ||
+                deviceString.compareIgnoreCase("BlackHole 2ch") == 0)
+            {
+                loopbackDeviceSelector.addItem(deviceString, index++);
             }
         }
     }
@@ -146,7 +169,7 @@ void MainContentComponent::populateLoopbackDevices()
         {
             void modalStateFinished (int) override
             {
-                juce::JUCEApplication::quit();
+            juce::MessageManager::callAsync([] { juce::JUCEApplication::quit(); });
             }
         };
         static QuitCallback quitCallback;
@@ -211,14 +234,18 @@ void MainContentComponent::focusLost(FocusChangeType)
     }
 }
 
-void MainContentComponent::mouseDown(const juce::MouseEvent& event)
-{
-    if (event.mods.isRightButtonDown())
-    {
-        isLoopbackVisible = !isLoopbackVisible; // Toggle visibility
+
+void MainContentComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers) {
+    if (modifiers.isAltDown()) {
+        isLoopbackVisible = true; // Toggle visibility
         loopbackDeviceSelector.setVisible(isLoopbackVisible);
         resized(); // Ensure layout updates
         repaint(); // Redraw component
     }
-
+    else {
+        isLoopbackVisible = false; // Toggle visibility
+        loopbackDeviceSelector.setVisible(isLoopbackVisible);
+        resized(); // Ensure layout updates
+        repaint(); // Redraw component
+    }
 }

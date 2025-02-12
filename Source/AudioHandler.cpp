@@ -11,12 +11,17 @@ AudioHandler::AudioHandler() {
     auto result = deviceManager.initialise(2, 2, nullptr, true);
     setAudioChannels(2, 2); // Request 2 inputs, 2 outputs
 
+
 }
 
-AudioHandler::~AudioHandler() {
-    // Clean up audio
-    shutdownAudio();
+AudioHandler::~AudioHandler()
+{
+    isShuttingDown = true;
+    stopTimer();
+    deviceManager.closeAudioDevice();  // Add this line
+    shutdownAudio(); // Stop audio processing
 }
+
 
 
 void AudioHandler::prepareToPlay(int samplesPerBlockExpected, double sampleRate) {
@@ -101,14 +106,13 @@ void AudioHandler::printCurrentAppAudioSetup() const {
     char systemDeviceName[64] = {0};
 
     if (SystemAudioDeviceSwitcher::getDeviceName(systemOutputDeviceID, systemDeviceName, sizeof(systemDeviceName))) {
-        DBG("System Output Device: " + juce::String(systemDeviceName) + " (ID: " + juce::String(systemOutputDeviceID) +
-            ")");
+        DBG("System Output Device: " + juce::String(juce::CharPointer_UTF8(systemDeviceName)) + " (ID: " + juce::String(systemOutputDeviceID) + ")");
     } else {
         DBG("Failed to retrieve system output device.");
     }
 
     // 2. Print app's internal audio setup
-    juce::AudioDeviceManager::AudioDeviceSetup setup = deviceManager.getAudioDeviceSetup();
+    auto setup = deviceManager.getAudioDeviceSetup();
     DBG("App Audio Device Setup:");
     DBG(" Input Device: " << setup.inputDeviceName);
     DBG(" Output Device: " << setup.outputDeviceName);
@@ -124,10 +128,12 @@ void AudioHandler::printCurrentAppAudioSetup() const {
 }
 
 
-void AudioHandler::switchToLoopbackDevice() {
+void AudioHandler::switchToLoopbackDevice()
+{
+    if (isShuttingDown) return;
+
     DBG("=== Starting Audio Switch ===");
 
-    // 1. Store & verify original output
     originalOutputDeviceID = SystemAudioDeviceSwitcher::getCurrentOutputDevice();
     char originalDeviceNameBuffer[64] = {0};
 
@@ -135,40 +141,49 @@ void AudioHandler::switchToLoopbackDevice() {
         DBG("ERROR: Failed to get original device name");
         return;
     }
-    originalOutputDeviceName = juce::String(originalDeviceNameBuffer);
+
+    originalOutputDeviceName = juce::String(juce::CharPointer_UTF8(originalDeviceNameBuffer));
     DBG("Original device: " + originalOutputDeviceName + " (ID: " + juce::String(originalOutputDeviceID) + ")");
 
-    // 2. Verify & switch to loopback
     AudioDeviceID loopbackDeviceID = SystemAudioDeviceSwitcher::findDeviceByName(loopbackDeviceName.toRawUTF8());
     if (loopbackDeviceID == 0) {
         DBG("ERROR: Loopback device not found: " + loopbackDeviceName);
         return;
     }
-    DBG("Found loopback device: " + loopbackDeviceName + " (ID: " + juce::String(loopbackDeviceID) + ")");
 
     if (!SystemAudioDeviceSwitcher::setOutputDevice(loopbackDeviceID)) {
         DBG("ERROR: Failed to set system output to loopback");
         return;
     }
+
     DBG("System output switched to loopback");
 
-    // 3. Configure app audio with delay
-    juce::Timer::callAfterDelay(100, [this]() {
-        auto setup = deviceManager.getAudioDeviceSetup();
-        setup.inputDeviceName = loopbackDeviceName;
-        setup.outputDeviceName = originalOutputDeviceName;
-
-        DBG("Setting app audio - Input: " + setup.inputDeviceName + ", Output: " + setup.outputDeviceName);
-        juce::String error = deviceManager.setAudioDeviceSetup(setup, true);
-
-        if (!error.isEmpty()) {
-            DBG("ERROR setting audio devices: " + error);
-        } else {
-            DBG("App audio setup complete");
-            printCurrentAppAudioSetup();
-        }
-    });
+    // 🔹 Start a timer that will trigger `timerCallback()` after 100ms
+    startTimer(1);
 }
+
+void AudioHandler::timerCallback()
+{
+    if (isShuttingDown) return;  // ✅ Prevent execution if shutdown is happening
+
+    stopTimer();  // ✅ Stop the timer immediately so it only runs once
+
+    auto setup = deviceManager.getAudioDeviceSetup();
+    setup.inputDeviceName = loopbackDeviceName;
+    setup.outputDeviceName = originalOutputDeviceName;
+
+    DBG("Setting app audio - Input: " + setup.inputDeviceName + ", Output: " + setup.outputDeviceName);
+    juce::String error = deviceManager.setAudioDeviceSetup(setup, true);
+
+    if (!error.isEmpty()) {
+        DBG("ERROR setting audio devices: " + error);
+    } else {
+        DBG("App audio setup complete");
+        printCurrentAppAudioSetup();
+    }
+}
+
+
 
 void AudioHandler::restoreOriginalOutputDevice() {
     if (originalOutputDeviceID == 0) {
@@ -184,7 +199,7 @@ void AudioHandler::restoreOriginalOutputDevice() {
     DBG("System output restored to: " + originalOutputDeviceName);
 
     // 2. Restore app's internal audio setup
-    juce::AudioDeviceManager::AudioDeviceSetup setup = deviceManager.getAudioDeviceSetup();
+    auto setup = deviceManager.getAudioDeviceSetup();
 
     // Keep input as loopback if already set, otherwise disable input
     if (setup.inputDeviceName != loopbackDeviceName)

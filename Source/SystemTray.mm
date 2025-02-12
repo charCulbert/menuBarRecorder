@@ -29,7 +29,7 @@ TrayIcon::TrayIcon(std::function<void()> onClick)
 
 void TrayIcon::mouseDown(const juce::MouseEvent& event)
 {
-    if (event.mods.isLeftButtonDown() && onClickCallback)
+    if (onClickCallback)
     {
         onClickCallback();
     }
