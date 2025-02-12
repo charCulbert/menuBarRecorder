@@ -87,3 +87,6 @@ out/
 
 # Blackhole driver
 BlackHole/
+
+# installer file
+*.pkg
