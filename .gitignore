@@ -90,3 +90,7 @@ BlackHole/
 
 # installer file
 *.pkg
+
+# ai md files
+CLAUDE.md
+gemini.md
