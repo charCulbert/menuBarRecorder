@@ -1,0 +1,30 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2025 Charlie Culbert
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+===============================================================================
+
+THIRD-PARTY SOFTWARE LICENSES:
+
+This software uses the JUCE framework, which is subject to its own license
+terms. For applications that generate less than $50,000 in gross revenue,
+JUCE Personal license applies. For higher revenue applications, commercial
+JUCE licenses are required. See https://juce.com/legal/juce-7-licence/
+
+This software optionally works with BlackHole virtual audio driver, which
+is licensed under GNU General Public License v3. The BlackHole source code
+is available at https://github.com/ExistentialAudio/BlackHole

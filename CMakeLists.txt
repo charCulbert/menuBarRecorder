@@ -38,14 +38,14 @@ set(app_icon_small "Resources/MenuBarRecorder.png")
 
 
 juce_add_gui_app(${PROJECT_NAME}
-        COMPANY_NAME "CharlieCulbert"
+        COMPANY_NAME "MenuBarRecorder"
         PRODUCT_NAME "MenuBarRecorder"
         MICROPHONE_PERMISSION_ENABLED TRUE
         MICROPHONE_PERMISSION_TEXT "MenuBarRecorder needs access to your audio devices"
         HARDENED_RUNTIME_ENABLED TRUE
         HARDENED_RUNTIME_OPTIONS com.apple.security.device.audio-input
         PLIST_TO_MERGE "${MacPList}"
-        BUNDLE_ID "com.charlieculbert.MenuBarRecorder"
+        BUNDLE_ID "com.menubarrecorder.app"
         VERSION 0.1.0
         ICON_BIG "${app_icon_big}"
         ICON_SMALL "${app_icon_small}"
